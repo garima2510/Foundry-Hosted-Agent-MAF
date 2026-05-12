@@ -1,0 +1,52 @@
+date,name,country,type,paid,notes
+2026-01-01,New Year's Day,NL,Public,Yes,Nieuwjaarsdag
+2026-04-03,Good Friday,NL,Public,Yes,Goede Vrijdag - observed by Tulpix though not legally mandatory in NL
+2026-04-05,Easter Sunday,NL,Public,Yes,Eerste Paasdag
+2026-04-06,Easter Monday,NL,Public,Yes,Tweede Paasdag
+2026-04-27,King's Day,NL,Public,Yes,Koningsdag
+2026-05-05,Liberation Day,NL,Public,Yes,Bevrijdingsdag - paid every year at Tulpix (legally only every 5 years)
+2026-05-14,Ascension Day,NL,Public,Yes,Hemelvaartsdag
+2026-05-24,Pentecost Sunday,NL,Public,Yes,Eerste Pinksterdag
+2026-05-25,Pentecost Monday,NL,Public,Yes,Tweede Pinksterdag
+2026-12-25,Christmas Day,NL,Public,Yes,Eerste Kerstdag
+2026-12-26,Boxing Day,NL,Public,Yes,Tweede Kerstdag
+2026-01-01,New Year's Day,DE,Public,Yes,Neujahr
+2026-04-03,Good Friday,DE,Public,Yes,Karfreitag
+2026-04-06,Easter Monday,DE,Public,Yes,Ostermontag
+2026-05-01,Labour Day,DE,Public,Yes,Tag der Arbeit
+2026-05-14,Ascension Day,DE,Public,Yes,Christi Himmelfahrt
+2026-05-25,Whit Monday,DE,Public,Yes,Pfingstmontag
+2026-10-03,German Unity Day,DE,Public,Yes,Tag der Deutschen Einheit
+2026-12-25,Christmas Day,DE,Public,Yes,1. Weihnachtstag
+2026-12-26,Boxing Day,DE,Public,Yes,2. Weihnachtstag
+2026-01-01,New Year's Day,FR,Public,Yes,Jour de l'An
+2026-04-06,Easter Monday,FR,Public,Yes,Lundi de Paques
+2026-05-01,Labour Day,FR,Public,Yes,Fete du Travail
+2026-05-08,Victory Day,FR,Public,Yes,Victoire 1945
+2026-05-14,Ascension Day,FR,Public,Yes,Ascension
+2026-05-25,Whit Monday,FR,Public,Yes,Lundi de Pentecote
+2026-07-14,Bastille Day,FR,Public,Yes,Fete Nationale
+2026-08-15,Assumption Day,FR,Public,Yes,Assomption
+2026-11-01,All Saints' Day,FR,Public,Yes,Toussaint
+2026-11-11,Armistice Day,FR,Public,Yes,Armistice 1918
+2026-12-25,Christmas Day,FR,Public,Yes,Noel
+2026-01-01,New Year's Day,ES,Public,Yes,Ano Nuevo
+2026-01-06,Epiphany,ES,Public,Yes,Reyes
+2026-04-03,Good Friday,ES,Public,Yes,Viernes Santo
+2026-05-01,Labour Day,ES,Public,Yes,Dia del Trabajador
+2026-08-15,Assumption Day,ES,Public,Yes,Asuncion
+2026-10-12,National Day of Spain,ES,Public,Yes,Fiesta Nacional
+2026-11-01,All Saints' Day,ES,Public,Yes,Todos los Santos
+2026-12-06,Constitution Day,ES,Public,Yes,Dia de la Constitucion
+2026-12-08,Immaculate Conception,ES,Public,Yes,Inmaculada Concepcion
+2026-12-25,Christmas Day,ES,Public,Yes,Navidad
+2026-01-01,New Year's Day,IE,Public,Yes,La Caille
+2026-02-02,St Brigid's Day,IE,Public,Yes,La Fheile Bride
+2026-03-17,St Patrick's Day,IE,Public,Yes,La Fheile Padraig
+2026-04-06,Easter Monday,IE,Public,Yes,Luan Casca
+2026-05-04,May Day,IE,Public,Yes,La Bealtaine
+2026-06-01,June Bank Holiday,IE,Public,Yes,Saoire Bhainc i mi Mheithimh
+2026-08-03,August Bank Holiday,IE,Public,Yes,Saoire Bhainc i mi Lunasa
+2026-10-26,October Bank Holiday,IE,Public,Yes,Saoire Bhainc i mi Dheireadh Fomhair
+2026-12-25,Christmas Day,IE,Public,Yes,La Nollag
+2026-12-28,St Stephen's Day (observed),IE,Public,Yes,La Fheile Stiofain - observed Monday
