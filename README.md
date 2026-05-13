@@ -15,9 +15,12 @@ swap out the chat client and tool list at each stage:
 |---|---|---|
 | 1 | `1-local-model.py` | Run an agent fully locally against an Ollama-served small model. No cloud. |
 | 2 | `2-foundry-model.py` | Same agent, now using a chat model deployed in Microsoft Foundry / Azure OpenAI. |
-| 3 | `3-create-knowledge-base.py` | One-time setup: upload sample HR docs to blob storage, build an Azure AI Search index with integrated vectorization, then create a Foundry IQ knowledge source + knowledge base on top. |
-| 4 | `4-foundry-iq.py` | Add the knowledge base from step 3 as an MCP tool on the agent so answers are grounded in the indexed HR content. |
-| 5 | `5-toolbox.py` (+ `create-toolbox.py`) | Add a Foundry Toolbox that exposes web search and code interpreter via MCP, alongside the direct KB MCP tool. The toolbox is registered once with `create-toolbox.py`. |
+| 3 | `3-foundry-iq.py` | Add a knowledge base as an MCP tool on the agent so answers are grounded in the indexed HR content. Requires the one-time `create-knowledge-base.py` setup first. |
+| 4 | `4-toolbox.py` | Add a Foundry Toolbox that exposes web search and code interpreter via MCP, alongside the direct KB MCP tool. Requires the one-time `create-toolbox.py` setup first. |
+| 5 | `5-hosted-agent.py` | Wrap the same agent in `ResponsesHostServer` so it can run as a Foundry Hosted Agent. Exposes the OpenAI Responses API locally for testing. |
+| — | `create-knowledge-base.py` | One-time setup: upload sample HR docs to blob storage, build an Azure AI Search index with integrated vectorization, then create a Foundry IQ knowledge source + knowledge base on top. |
+| — | `create-toolbox.py` | One-time setup: register the Foundry Toolbox (web search + code interpreter) in your Foundry project. |
+| — | `test-hosted-agent-locally.py` | Sample client that POSTs a request to the local hosted-agent server and prints assistant text + tool calls. |
 
 Sample HR content lives in [data/hr-kb/](data/hr-kb/).
 
@@ -26,7 +29,7 @@ Sample HR content lives in [data/hr-kb/](data/hr-kb/).
 - Python 3.13+
 - [`uv`](https://docs.astral.sh/uv/)
 - For script 1: [Ollama](https://ollama.com/download) running locally with a tool-calling model (e.g. `ollama pull llama3.2`)
-- For scripts 2-4: an Azure subscription with
+- For scripts 2-5: an Azure subscription with
   - A Microsoft Foundry / Azure OpenAI resource and a chat deployment
   - An embedding deployment (e.g. `text-embedding-ada-002`)
   - An Azure AI Search service (Basic tier or higher, with a system-assigned managed identity)
@@ -52,7 +55,7 @@ identity.
 |---|---|---|
 | `Storage Blob Data Contributor` | Storage account | Upload sample HR docs to the blob container |
 | `Search Service Contributor` | AI Search service | Create/update index, data source, skillset, indexer |
-| `Search Index Data Reader` | AI Search service | Query the index from local code in script 4 |
+| `Search Index Data Reader` | AI Search service | Query the index from local code in script 3 |
 | `Azure AI User` (AI Services account) **or** `Cognitive Services OpenAI User` (plain Azure OpenAI account) | Foundry / AOAI resource | Optional — only if you also call the chat / embedding deployments locally |
 
 #### B — AI Search service managed identity
@@ -106,8 +109,8 @@ Quick checks if something doesn't work:
   service but **no indexes**, the project MI is missing
   `Search Service Contributor` on the search service.
 - If the dialog says **"missing semantic configuration"**, the index needs
-  a semantic configuration (Foundry IQ requires one). Script 3 already
-  defines this; if you built the index manually, add a `SemanticSearch`
+  a semantic configuration (Foundry IQ requires one). `create-knowledge-base.py`
+  already defines this; if you built the index manually, add a `SemanticSearch`
   block with one configuration that prioritizes a title field and at least
   one content field.
 - If the indexer's key field error mentions
@@ -139,36 +142,57 @@ uv run .\1-local-model.py
 # Stage 2 - Foundry-hosted chat model
 uv run .\2-foundry-model.py
 
-# Stage 3 - one-time: build the index + Foundry IQ knowledge base
-uv run .\3-create-knowledge-base.py
+# One-time: build the index + Foundry IQ knowledge base
+uv run .\create-knowledge-base.py
 
-# Stage 4 - agent grounded in the KB via the MCP endpoint
-uv run .\4-foundry-iq.py
+# Stage 3 - agent grounded in the KB via the MCP endpoint
+uv run .\3-foundry-iq.py
 
-# Stage 5 - one-time: register the Foundry Toolbox in your project
+# One-time: register the Foundry Toolbox in your project
 uv run .\create-toolbox.py
-# Stage 5 - agent with KB + toolbox (web search + code interpreter)
-uv run .\5-toolbox.py
+
+# Stage 4 - agent with KB + toolbox (web search + code interpreter)
+uv run .\4-toolbox.py
+
+# Stage 5 - run the agent as a Foundry Hosted Agent server (see section below)
+uv run .\5-hosted-agent.py
 ```
 
 > On Windows, set the console to UTF-8 before running scripts that print model output
 > (`chcp 65001; $env:PYTHONIOENCODING="utf-8"`) — otherwise Unicode characters
 > like the minus sign or em-dash crash the legacy cp1252 console.
 
+### Test the hosted agent locally
+
+`5-hosted-agent.py` is a web server (Foundry Hosted Agent runtime).
+Start it in one terminal, then send a request from another:
+
+```powershell
+# Terminal 1 - start the server (default: http://localhost:8088)
+uv run .\5-hosted-agent.py
+
+# Terminal 2 - send a sample request and print only assistant text + tool calls
+uv run .\test-hosted-agent-locally.py
+```
+
+Health check: `curl http://localhost:8088/readiness` should return `200`.
+
 ## Project layout
 
 ```
 .
-├── 1-local-model.py            # Stage 1: local SLM via Ollama
-├── 2-foundry-model.py          # Stage 2: Foundry chat model
-├── 3-create-knowledge-base.py  # Stage 3: build index + KB (run once)
-├── 4-foundry-iq.py             # Stage 4: agent + KB MCP tool
-├── 5-toolbox.py                # Stage 5: agent + KB MCP + Foundry Toolbox
-├── create-toolbox.py           # One-time: register the Foundry Toolbox
-├── data/hr-kb/                 # Sample HR markdown / CSV documents
-├── .env.example                # Template for required env vars
-├── pyproject.toml              # Project + pinned dependencies
-└── uv.lock                     # Locked transitive dependency graph
+├── 1-local-model.py              # Stage 1: local SLM via Ollama
+├── 2-foundry-model.py            # Stage 2: Foundry chat model
+├── 3-foundry-iq.py               # Stage 3: agent + KB MCP tool
+├── 4-toolbox.py                  # Stage 4: agent + KB MCP + Foundry Toolbox
+├── 5-hosted-agent.py             # Stage 5: agent wrapped as Foundry Hosted Agent server
+├── create-knowledge-base.py      # One-time: build index + KB
+├── create-toolbox.py             # One-time: register the Foundry Toolbox
+├── test-hosted-agent-locally.py  # Sample client for the stage 5 server
+├── data/hr-kb/                   # Sample HR markdown / CSV documents
+├── .env.example                  # Template for required env vars
+├── pyproject.toml                # Project + pinned dependencies
+└── uv.lock                       # Locked transitive dependency graph
 ```
 
 ## Dependency management
@@ -189,13 +213,16 @@ Commit `pyproject.toml` and `uv.lock`. Do not commit `.venv/` or `.env`.
 
 - Authentication everywhere uses `AzureDeveloperCliCredential` /
   `DefaultAzureCredential` — no API keys are stored in code or `.env`.
-- Script 4 talks to the KB via MCP (streamable HTTP). The MCP URL targets
-  the Foundry IQ `KnowledgeBase` resource created in script 3, not the bare
-  search index.
-- Script 5 runs the **Foundry Toolbox** (`web_search` + `code_interpreter`)
-  side-by-side with the **direct KB MCP** from script 4. The KB tool is
+- Script 3 talks to the KB via MCP (streamable HTTP). The MCP URL targets
+  the Foundry IQ `KnowledgeBase` resource created by `create-knowledge-base.py`,
+  not the bare search index.
+- Script 4 runs the **Foundry Toolbox** (`web_search` + `code_interpreter`)
+  side-by-side with the **direct KB MCP** from script 3. The KB tool is
   intentionally NOT registered through the toolbox — see the
   [Foundry Toolbox + KB caveat](#foundry-toolbox--kb-caveat) below.
+- Script 5 reuses the same agent definition as script 4 but wraps it in
+  `ResponsesHostServer` from `agent-framework-foundry-hosting`, exposing the
+  OpenAI Responses API on `http://localhost:8088`.
 - The HR scenarios, company name, and benefit details in `data/hr-kb/` are
   fictional sample content for demo purposes only.
 
@@ -216,10 +243,10 @@ Workaround used in this repo:
 - `create-toolbox.py` registers only `web_search` and `code_interpreter`
   in the toolbox (the KB block is left in place but commented out, with a
   note explaining why).
-- `5-toolbox.py` opens **two** MCP tools concurrently: the toolbox MCP for
+- `4-toolbox.py` opens **two** MCP tools concurrently: the toolbox MCP for
   web search / code interpreter, and the KB MCP directly (same pattern as
-  `4-foundry-iq.py`). Both are passed to the agent.
+  `3-foundry-iq.py`). Both are passed to the agent.
 
 When the gateway bug is fixed, you can move the KB tool back into the
 toolbox by uncommenting the `mcp` entry in `create-toolbox.py`,
-re-registering, and removing the direct KB MCP tool from `5-toolbox.py`.
+re-registering, and removing the direct KB MCP tool from `4-toolbox.py`.

@@ -1,0 +1,7 @@
+{
+  "model": "InternalHRHelper",
+  "stream": false,
+  "input": [
+    { "role": "user", "content": "How many vacation days do I get and when does open enrollment close?" }
+  ]
+}
