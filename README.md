@@ -4,7 +4,9 @@ Progressive demos showing how to build an HR helper agent with the
 [Microsoft Agent Framework](https://github.com/microsoft/agent-framework),
 starting from a fully local model and ending with a Foundry-hosted agent
 that combines an enterprise knowledge base with a Foundry Toolbox
-(web search + code interpreter).
+(web search + code interpreter). 
+
+**P.S. This is based on another Microsoft course - https://github.com/Azure-Samples/foundry-hosted-agentframework-demos/tree/main so please check the original one for more details**
 
 The scripts share the same agent shape (instructions + tools) and only
 swap out the chat client and tool list at each stage:
