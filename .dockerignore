@@ -1,0 +1,21 @@
+# Files copied into the image are controlled by COPY commands in the Dockerfile,
+# but excluding noise here keeps the build context small and the build fast.
+.venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+data/                  # KB source docs — already indexed in Azure AI Search; not needed at runtime
+README.md
+test-hosted-agent-locally.py
+create-knowledge-base.py
+create-toolbox.py
+1-local-model.py
+2-foundry-model.py
+3-foundry-iq.py
+4-toolbox.py

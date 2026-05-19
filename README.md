@@ -56,14 +56,14 @@ identity.
 | `Storage Blob Data Contributor` | Storage account | Upload sample HR docs to the blob container |
 | `Search Service Contributor` | AI Search service | Create/update index, data source, skillset, indexer |
 | `Search Index Data Reader` | AI Search service | Query the index from local code in script 3 |
-| `Azure AI User` (AI Services account) **or** `Cognitive Services OpenAI User` (plain Azure OpenAI account) | Foundry / AOAI resource | Optional — only if you also call the chat / embedding deployments locally |
+| `Foundry User` (AI Services account) **or** `Cognitive Services OpenAI User` (plain Azure OpenAI account) | Foundry / AOAI resource | Optional — only if you also call the chat / embedding deployments locally |
 
 #### B — AI Search service managed identity
 
 | Role | Scope | Why |
 |---|---|---|
 | `Storage Blob Data Reader` | Storage account | Indexer reads blobs via MI (no connection string keys) |
-| `Azure AI User` (AI Services account) **or** `Cognitive Services OpenAI User` (plain AOAI) | Foundry / AOAI resource | Skillset + vectorizer call the embedding deployment via MI |
+| `Foundry User` (AI Services account) **or** `Cognitive Services OpenAI User` (plain AOAI) | Foundry / AOAI resource | Skillset + vectorizer call the embedding deployment via MI |
 
 #### C — Foundry account managed identity
 
@@ -86,7 +86,7 @@ project level.)
 
 > **Foundry vs. plain Azure OpenAI.** Foundry / AI Services accounts
 > (`kind = AIServices`, endpoint `*.services.ai.azure.com`) use the
-> `Azure AI User` role, whose data action `Microsoft.CognitiveServices/*`
+> `Foundry User` role, whose data action `Microsoft.CognitiveServices/*`
 > covers embeddings and chat. Plain Azure OpenAI accounts
 > (`kind = OpenAI`, endpoint `*.openai.azure.com`) use the more granular
 > `Cognitive Services OpenAI User` role.
@@ -177,6 +177,105 @@ uv run .\test-hosted-agent-locally.py
 
 Health check: `curl http://localhost:8088/readiness` should return `200`.
 
+## Deploy as a Foundry Hosted Agent (VS Code extension)
+
+Once the agent works locally, you can ship the same `5-hosted-agent.py`
+container to **Microsoft Foundry Hosted Agents**. This repo uses the
+**Microsoft Foundry VS Code extension** for the deploy step (no `azd` CLI
+required).
+
+### Files that drive the deploy
+
+| File | Purpose |
+|---|---|
+| [Dockerfile](Dockerfile) | Builds a `python:3.13-slim` image, installs deps with `uv sync --locked --no-dev`, copies `5-hosted-agent.py`, exposes 8088, runs the script. |
+| [.dockerignore](.dockerignore) | Keeps the build context lean — excludes `.venv/`, `data/`, the other demo scripts, `.env*`, etc. |
+| [agent.yaml](agent.yaml) | The hosted-agent manifest the extension reads (kind, protocols, resources, dockerfile path, non-secret env vars). |
+
+### Step-by-step
+
+1. Install the **Microsoft Foundry** VS Code extension and sign in to your
+   tenant.
+2. From the extension sidebar, open your Foundry project → **Agents**.
+3. Right-click and choose **Deploy New Agent** (first deploy) or
+   **Deploy New Version** (subsequent deploys). Pick [agent.yaml](agent.yaml)
+   when prompted.
+4. The extension ships the build context to a remote builder, produces an
+   image, and registers a new agent version.
+5. Wait for the version to show **Active** in the agents list, then
+   right-click → **View Logs** to watch the container start. You should see:
+   ```
+   AgentServerHost starting on 0.0.0.0:8088
+   ```
+6. Right-click the agent → **Test** to send a sample prompt.
+
+### Required role assignments for the hosted agent's identity
+
+Each deployed agent version gets its **own workload identity** (separate
+from yours and from the Foundry project MI). Every downstream service the
+agent calls must grant that identity access. Look up the agent's
+principal id from the agent details pane in the extension, or via:
+
+```powershell
+az rest --method GET `
+  --url "<your-project-endpoint>/agents/<your-agent-name>?api-version=v1" `
+  --resource "https://ai.azure.com" `
+  --query "instance_identity.principal_id" -o tsv
+```
+
+Then assign:
+
+| Role | Scope | Why |
+|---|---|---|
+| `Foundry User` (Foundry / AI Services) **or** `Cognitive Services OpenAI User` (plain AOAI) | Foundry / AOAI resource | Agent calls the chat model |
+| `Search Index Data Reader` | AI Search service | Agent queries the KB via MCP at runtime |
+
+> Data-plane role assignments on Cognitive Services and AI Search take
+> **10–15 minutes** to propagate. Wait before retrying.
+
+### Things that bit us — and the fixes
+
+- **`agent.yaml` schema mismatch.** The hosted-agent CLI/extension expects
+  flat top-level keys (`kind`, `name`, `protocols`, `resources`,
+  `dockerfile_path`, `environment_variables`). Nesting them under a
+  `definition:` block is the **REST API** schema; the tooling silently
+  ignores it, so the container starts with no env vars and you get a
+  `KeyError: 'AZURE_AI_MODEL_DEPLOYMENT_NAME'` on import. See the comments
+  at the top of [agent.yaml](agent.yaml).
+
+- **401 from the model after a clean deploy.** The agent's workload
+  identity hadn't been granted `Foundry User` on the Foundry project.
+  Local works because your CLI user already has access; the hosted
+  identity is brand new. Fix: assign the role (see table above) and wait
+  for propagation.
+
+- **403 from the knowledge base MCP after the model was working.** Same
+  pattern as above, different resource — assign `Search Index Data Reader`
+  on the AI Search service to the agent identity.
+
+- **`ImportError: cannot import name 'Agent' from 'agent_framework'`
+  inside the container.** The deployed image was stale — a cached layer
+  installed an older `agent-framework-core` that doesn't export `Agent`
+  at the top level. Fix: refresh the lockfile, force a fresh build, and
+  verify locally before redeploying:
+
+  ```powershell
+  uv lock
+  docker build --no-cache --platform linux/amd64 -t hosted-agent-check .
+  docker run --rm hosted-agent-check python -c "from agent_framework import Agent; print('ok')"
+  ```
+
+  Then redeploy from the extension. (`agent-framework==1.3.0` is a
+  meta-package that only ships `agent_framework_meta/`. The real
+  `agent_framework/__init__.py` is provided by `agent-framework-core==1.3.0`.)
+
+- **Secrets in `agent.yaml`.** `environment_variables` is for
+  **non-secret** config only — endpoint URLs, deployment names, resource
+  names. The file is checked into source control. Anything secret should
+  be added as a **CustomKeys connection** on the Foundry project and
+  referenced from `agent.yaml` as
+  `${{connections.<connection-name>.credentials.<field>}}`.
+
 ## Project layout
 
 ```
@@ -189,6 +288,9 @@ Health check: `curl http://localhost:8088/readiness` should return `200`.
 ├── create-knowledge-base.py      # One-time: build index + KB
 ├── create-toolbox.py             # One-time: register the Foundry Toolbox
 ├── test-hosted-agent-locally.py  # Sample client for the stage 5 server
+├── Dockerfile                    # Container image for the hosted agent
+├── .dockerignore                 # Build-context exclusions
+├── agent.yaml                    # Foundry Hosted Agent manifest (used by the VS Code extension)
 ├── data/hr-kb/                   # Sample HR markdown / CSV documents
 ├── .env.example                  # Template for required env vars
 ├── pyproject.toml                # Project + pinned dependencies
