@@ -184,6 +184,8 @@ container to **Microsoft Foundry Hosted Agents**. This repo uses the
 **Microsoft Foundry VS Code extension** for the deploy step (no `azd` CLI
 required).
 
+##### P.S. I did not use azd at all. The whole code is deployed and tested using VS Code extension for Foundry. azd would need project intialization
+
 ### Files that drive the deploy
 
 | File | Purpose |
